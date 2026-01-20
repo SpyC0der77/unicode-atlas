@@ -125,7 +125,7 @@ unicode_detector/
 - **React 19** - UI library
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
-- **Shadcn UI** - UI component library
+- **Shadcn/UI** - UI component library
 - **Radix UI** - Accessible component primitives
 - **Lucide React** - Icons
 
