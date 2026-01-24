@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ActionDropdown } from "@/components/action-dropdown"
 import type { UnicodeCharacter } from "@/lib/unicode-data"
 
 interface CharacterModalProps {
@@ -170,14 +171,21 @@ export function CharacterModal({ character, open, onOpenChange }: CharacterModal
               <Download className="w-4 h-4 mr-2" />
               SVG
             </Button>
-            <Button variant="outline" size="sm" onClick={() => downloadPng(false)}>
-              <Download className="w-4 h-4 mr-2" />
-              PNG
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => downloadPng(true)}>
-              <Download className="w-4 h-4 mr-2" />
-              PNG (Transparent)
-            </Button>
+            <ActionDropdown
+              label="PNG"
+              size="sm"
+              actions={[
+                { label: "PNG", id: "png-solid" },
+                { label: "PNG (Transparent)", id: "png-transparent" },
+              ]}
+              onAction={(actionId) => {
+                if (actionId === "png-solid") {
+                  downloadPng(false)
+                } else if (actionId === "png-transparent") {
+                  downloadPng(true)
+                }
+              }}
+            />
           </div>
         </div>
 
