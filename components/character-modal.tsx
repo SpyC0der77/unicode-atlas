@@ -162,30 +162,31 @@ export function CharacterModal({ character, open, onOpenChange }: CharacterModal
           </DialogHeader>
         
         <div className="flex flex-col items-center gap-6 py-4">
-          <div className="flex items-center justify-center w-32 h-32 rounded-lg bg-muted">
-            <span className="text-7xl text-foreground">{character.char}</span>
-          </div>
-          
-          <div className="flex gap-2 flex-wrap justify-center">
-            <Button variant="outline" size="sm" onClick={downloadSvg}>
-              <Download className="w-4 h-4 mr-2" />
-              SVG
-            </Button>
-            <ActionDropdown
-              label="PNG"
-              size="sm"
-              actions={[
-                { label: "PNG", id: "png-solid" },
-                { label: "PNG (Transparent)", id: "png-transparent" },
-              ]}
-              onAction={(actionId) => {
-                if (actionId === "png-solid") {
-                  downloadPng(false)
-                } else if (actionId === "png-transparent") {
-                  downloadPng(true)
-                }
-              }}
-            />
+          <div className="flex flex-col items-center w-full">
+            <div className="flex items-center justify-center w-48 h-48 rounded-t-lg border-x border-t bg-muted">
+              <span className="text-7xl text-foreground">{character.char}</span>
+            </div>
+            <div className="flex gap-2 justify-center px-4 py-3 w-48 rounded-b-lg border-x border-b bg-card shadow-sm">
+              <Button variant="outline" size="sm" onClick={downloadSvg}>
+                <Download className="w-4 h-4 mr-2" />
+                SVG
+              </Button>
+              <ActionDropdown
+                label="PNG"
+                size="sm"
+                actions={[
+                  { label: "PNG", id: "png-solid" },
+                  { label: "PNG (Transparent)", id: "png-transparent" },
+                ]}
+                onAction={(actionId) => {
+                  if (actionId === "png-solid") {
+                    downloadPng(false)
+                  } else if (actionId === "png-transparent") {
+                    downloadPng(true)
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
 
