@@ -229,6 +229,10 @@ export default function Home() {
         character={selectedCharacter}
         open={characterModalOpen}
         onOpenChange={setCharacterModalOpen}
+        onSelectCharacter={(character) => {
+          setSelectedCharacter(character)
+          setCharacterModalOpen(true)
+        }}
       />
       
       <DrawingModal

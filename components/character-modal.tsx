@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Copy, Download, Check, ExternalLink } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Copy, Download, Check, ExternalLink, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -17,11 +17,16 @@ import {
 } from "@/components/ui/tooltip"
 import { ActionDropdown } from "@/components/action-dropdown"
 import type { UnicodeCharacter } from "@/lib/unicode-data"
+import {
+  UNICODE_CATEGORIES,
+  getCommonName,
+} from "@/lib/unicode-data"
 
 interface CharacterModalProps {
   character: UnicodeCharacter | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSelectCharacter?: (character: UnicodeCharacter) => void
 }
 
 interface InfoRow {
@@ -32,15 +37,21 @@ interface InfoRow {
   displayValue?: string
 }
 
-export function CharacterModal({ character, open, onOpenChange }: CharacterModalProps) {
+export function CharacterModal({ character, open, onOpenChange, onSelectCharacter }: CharacterModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [wikipediaExists, setWikipediaExists] = useState<boolean | null>(null)
+  const [similarCharacters, setSimilarCharacters] = useState<UnicodeCharacter[]>([])
+  const [isLoadingSimilar, setIsLoadingSimilar] = useState(false)
   const currentCodePointRef = useRef<number | null>(null)
+  const similarSearchedRef = useRef<number | null>(null)
 
   // Reset state when modal closes or character becomes null
   useEffect(() => {
     if (!character || !open) {
       currentCodePointRef.current = null
+      similarSearchedRef.current = null
+      setSimilarCharacters([])
+      setIsLoadingSimilar(false)
     }
   }, [character, open])
 
@@ -92,6 +103,102 @@ export function CharacterModal({ character, open, onOpenChange }: CharacterModal
     }
   }, [character, open])
 
+  const createCharacterFromCodePoint = useCallback((codePoint: number): UnicodeCharacter => {
+    const char = String.fromCodePoint(codePoint)
+    const category = UNICODE_CATEGORIES.find(
+      (c) => codePoint >= c.range[0] && codePoint <= c.range[1]
+    )
+    return {
+      char,
+      codePoint,
+      name: `Unicode U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`,
+      commonName: getCommonName(codePoint),
+      category: category?.name || "Unknown",
+      htmlEntity: `&#${codePoint};`,
+      cssCode: `\\${codePoint.toString(16).toUpperCase()}`,
+    }
+  }, [])
+
+  const handleFindSimilar = useCallback(async () => {
+    if (!character) return
+
+    setIsLoadingSimilar(true)
+    setSimilarCharacters([])
+
+    try {
+      // Generate image of the character (white background, black text)
+      const canvas = document.createElement("canvas")
+      canvas.width = 400
+      canvas.height = 400
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        setIsLoadingSimilar(false)
+        return
+      }
+
+      // White background
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, 400, 400)
+      
+      // Black text
+      ctx.fillStyle = "#000000"
+      ctx.font = "240px sans-serif"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText(character.char, 200, 200)
+
+      // Convert to data URL
+      const imageData = canvas.toDataURL("image/png")
+
+      // Call the recognize API
+      const response = await fetch("/api/recognize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ imageData }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to find similar characters")
+      }
+
+      // Convert character strings to UnicodeCharacter objects
+      // Skip the first result (it's the character itself)
+      const similarChars = data.characters
+        .slice(1)
+        .map((char: string) => {
+          const codePoint = char.codePointAt(0)
+          if (!codePoint) return null
+          return createCharacterFromCodePoint(codePoint)
+        })
+        .filter((char: UnicodeCharacter | null): char is UnicodeCharacter => char !== null)
+
+      setSimilarCharacters(similarChars)
+    } catch (err) {
+      console.error("Failed to find similar characters:", err)
+    } finally {
+      setIsLoadingSimilar(false)
+    }
+  }, [character, createCharacterFromCodePoint])
+
+  // Automatically find similar characters when character changes
+  useEffect(() => {
+    if (!character || !open) {
+      return
+    }
+
+    // Only search if we haven't searched for this character yet
+    if (similarSearchedRef.current === character.codePoint) {
+      return
+    }
+
+    similarSearchedRef.current = character.codePoint
+    handleFindSimilar()
+  }, [character, open, handleFindSimilar])
+
   if (!character) return null
 
   const copyToClipboard = async (text: string, field: string) => {
@@ -141,6 +248,7 @@ export function CharacterModal({ character, open, onOpenChange }: CharacterModal
     a.click()
   }
 
+
   const codePointHex = character.codePoint.toString(16).toUpperCase().padStart(4, "0")
   const wikipediaUrl = `https://en.wikipedia.org/wiki/U+${codePointHex}`
 
@@ -156,7 +264,7 @@ export function CharacterModal({ character, open, onOpenChange }: CharacterModal
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Character Details</DialogTitle>
           </DialogHeader>
@@ -245,6 +353,37 @@ export function CharacterModal({ character, open, onOpenChange }: CharacterModal
             </div>
           ))}
         </div>
+
+        {(similarCharacters.length > 0 || isLoadingSimilar) && (
+          <div className="space-y-3 mt-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground">Similar Characters</h3>
+              {isLoadingSimilar && (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+            {isLoadingSimilar ? (
+              <div className="text-sm text-muted-foreground">Finding similar characters...</div>
+            ) : (
+              <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1">
+                {similarCharacters.map((similarChar) => (
+                  <button
+                    key={similarChar.codePoint}
+                    onClick={() => {
+                      if (onSelectCharacter) {
+                        onSelectCharacter(similarChar)
+                      }
+                    }}
+                    className="aspect-square rounded-md bg-muted hover:bg-accent transition-colors flex items-center justify-center text-xl text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                    title={`U+${similarChar.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}
+                  >
+                    {similarChar.char}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
     </TooltipProvider>
