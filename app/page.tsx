@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Github, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { CategoryFilter } from "@/components/category-sidebar"
 import { SearchHeader } from "@/components/search-header"
 import { CharacterGrid } from "@/components/character-grid"
@@ -198,6 +199,7 @@ export default function Home() {
               Clear drawing results
             </button>
           )}
+          <ThemeToggle />
           <Button
             asChild
             variant="ghost"
