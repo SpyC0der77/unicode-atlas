@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Github } from "lucide-react"
+import { Github, Star } from "lucide-react"
 import { CategoryFilter } from "@/components/category-sidebar"
 import { SearchHeader } from "@/components/search-header"
 import { CharacterGrid } from "@/components/character-grid"
@@ -26,6 +26,7 @@ export default function Home() {
   const [drawnCharacters, setDrawnCharacters] = useState<string[]>([])
   const [selectedCharacters, setSelectedCharacters] = useState<Set<number>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
+  const [starCount, setStarCount] = useState<number | null>(null)
   const searchParams = useSearchParams()
 
   const createCharacterFromCodePoint = (codePoint: number): UnicodeCharacter => {
@@ -166,6 +167,23 @@ export default function Home() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    const fetchStarCount = async () => {
+      try {
+        const response = await fetch("https://api.github.com/repos/SpyC0der77/unicode-detector")
+        if (response.ok) {
+          const data = await response.json()
+          setStarCount(data.stargazers_count)
+        }
+      } catch (error) {
+        // Silently fail - star count is not critical
+        console.error("Failed to fetch star count:", error)
+      }
+    }
+
+    fetchStarCount()
+  }, [])
+
   return (
     <main className="h-screen flex flex-col bg-background">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -188,6 +206,12 @@ export default function Home() {
           >
             <Github className="w-4 h-4" />
             <span>GitHub</span>
+            {starCount !== null && (
+              <span className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 fill-current" />
+                <span>{starCount.toLocaleString()}</span>
+              </span>
+            )}
           </a>
         </div>
       </div>
