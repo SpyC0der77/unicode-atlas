@@ -187,7 +187,7 @@ export default function Home() {
   return (
     <main className="h-screen flex flex-col bg-background">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h1 className="text-xl font-semibold text-foreground">Unicode Explorer</h1>
+        <h1 className="text-xl font-semibold text-foreground">Unicode Atlas</h1>
         <div className="flex items-center gap-4">
           {drawnCharacters.length > 0 && (
             <button
