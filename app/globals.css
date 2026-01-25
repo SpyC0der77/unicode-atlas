@@ -122,4 +122,63 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Scrollbar styling for webkit browsers (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: oklch(0.18 0 0);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: oklch(0.35 0 0);
+    border-radius: 5px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.45 0 0);
+  }
+
+  /* Scrollbar styling for Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.35 0 0) oklch(0.18 0 0);
+  }
+
+  /* Light mode scrollbar overrides */
+  :root:not(.dark) *::-webkit-scrollbar-track {
+    background: oklch(0.95 0 0);
+  }
+
+  :root:not(.dark) *::-webkit-scrollbar-thumb {
+    background: oklch(0.6 0 0);
+  }
+
+  :root:not(.dark) *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0 0);
+  }
+
+  :root:not(.dark) * {
+    scrollbar-color: oklch(0.6 0 0) oklch(0.95 0 0);
+  }
+
+  /* Dark mode scrollbar (more prominent) */
+  .dark *::-webkit-scrollbar-track {
+    background: oklch(0.18 0 0);
+  }
+
+  .dark *::-webkit-scrollbar-thumb {
+    background: oklch(0.4 0 0);
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0 0);
+  }
+
+  .dark * {
+    scrollbar-color: oklch(0.4 0 0) oklch(0.18 0 0);
+  }
 }
