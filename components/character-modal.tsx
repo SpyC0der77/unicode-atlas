@@ -42,6 +42,7 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [wikipediaExists, setWikipediaExists] = useState<boolean | null>(null)
   const [similarCharacters, setSimilarCharacters] = useState<UnicodeCharacter[]>([])
+  const [similarCharactersLoading, setSimilarCharactersLoading] = useState(false)
   const currentCodePointRef = useRef<number | null>(null)
   const similarSearchedRef = useRef<number | null>(null)
 
@@ -51,6 +52,7 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
       currentCodePointRef.current = null
       similarSearchedRef.current = null
       setSimilarCharacters([])
+      setSimilarCharactersLoading(false)
     }
   }, [character, open])
 
@@ -118,25 +120,112 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     }
   }, [])
 
-  const handleFindSimilar = useCallback(() => {
+  const generateCharacterImage = useCallback((char: string): string => {
+    const canvas = document.createElement("canvas")
+    canvas.width = 400
+    canvas.height = 400
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return ""
+    
+    // White background
+    ctx.fillStyle = "#ffffff"
+    ctx.fillRect(0, 0, 400, 400)
+    
+    // Black text
+    ctx.fillStyle = "#000000"
+    ctx.font = "240px sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText(char, 200, 200)
+    
+    // Convert to base64 data URL
+    return canvas.toDataURL("image/png")
+  }, [])
+
+  const handleFindSimilar = useCallback(async () => {
     if (!character) return
 
-    // Look up pre-computed similar characters
-    const similarCodePoints = SIMILAR_CHARACTERS[character.codePoint] || []
+    const currentCodePoint = character.codePoint
 
-    // Convert codePoints to UnicodeCharacter objects
-    const similarChars = similarCodePoints
-      .map((codePoint) => {
-        try {
-          return createCharacterFromCodePoint(codePoint)
-        } catch {
-          return null
-        }
+    // First, check pre-computed similar characters
+    const precomputedCodePoints = SIMILAR_CHARACTERS[currentCodePoint]
+    
+    if (precomputedCodePoints !== undefined) {
+      // Use precomputed data
+      const similarChars = precomputedCodePoints
+        .map((codePoint) => {
+          try {
+            return createCharacterFromCodePoint(codePoint)
+          } catch {
+            return null
+          }
+        })
+        .filter((char): char is UnicodeCharacter => char !== null)
+      
+      // Only update if still the same character
+      if (currentCodePointRef.current === currentCodePoint) {
+        setSimilarCharacters(similarChars)
+      }
+      return
+    }
+
+    // Fallback: call API if no precomputed data exists
+    if (currentCodePointRef.current === currentCodePoint) {
+      setSimilarCharactersLoading(true)
+    }
+    
+    try {
+      const imageData = generateCharacterImage(character.char)
+      
+      const response = await fetch("/api/recognize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ imageData }),
       })
-      .filter((char): char is UnicodeCharacter => char !== null)
 
-    setSimilarCharacters(similarChars)
-  }, [character, createCharacterFromCodePoint])
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`)
+      }
+
+      const data = await response.json()
+      const unicodeChars: string[] = data.characters || []
+
+      // Convert character strings to codePoints, skip the first (it's the character itself)
+      const similarCodePoints = unicodeChars
+        .slice(1)
+        .map((char) => char.codePointAt(0))
+        .filter((cp): cp is number => cp !== undefined && cp !== currentCodePoint) // Filter out undefined and self
+
+      // Convert codePoints to UnicodeCharacter objects
+      const similarChars = similarCodePoints
+        .map((codePoint) => {
+          try {
+            return createCharacterFromCodePoint(codePoint)
+          } catch {
+            return null
+          }
+        })
+        .filter((char): char is UnicodeCharacter => char !== null)
+
+      // Only update if still the same character
+      if (currentCodePointRef.current === currentCodePoint) {
+        setSimilarCharacters(similarChars)
+      }
+    } catch (error) {
+      console.error("Error finding similar characters:", error)
+      // Only update if still the same character
+      if (currentCodePointRef.current === currentCodePoint) {
+        setSimilarCharacters([])
+      }
+    } finally {
+      // Only update loading state if still the same character
+      if (currentCodePointRef.current === currentCodePoint) {
+        setSimilarCharactersLoading(false)
+      }
+    }
+  }, [character, createCharacterFromCodePoint, generateCharacterImage])
 
   // Automatically find similar characters when character changes
   useEffect(() => {
@@ -308,27 +397,36 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
           ))}
         </div>
 
-        {similarCharacters.length > 0 && (
+        {(similarCharacters.length > 0 || similarCharactersLoading) && (
           <div className="space-y-3 mt-4">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-foreground">Similar Characters</h3>
+              {similarCharactersLoading && (
+                <span className="text-xs text-muted-foreground">Loading...</span>
+              )}
             </div>
-            <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {similarCharacters.map((similarChar) => (
-                <button
-                  key={similarChar.codePoint}
-                  onClick={() => {
-                    if (onSelectCharacter) {
-                      onSelectCharacter(similarChar)
-                    }
-                  }}
-                  className="aspect-square rounded-md bg-muted hover:bg-accent transition-colors flex items-center justify-center text-xl text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-                  title={`U+${similarChar.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}
-                >
-                  {similarChar.char}
-                </button>
-              ))}
-            </div>
+            {similarCharactersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-sm text-muted-foreground">Searching for similar characters...</div>
+              </div>
+            ) : similarCharacters.length > 0 ? (
+              <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {similarCharacters.map((similarChar) => (
+                  <button
+                    key={similarChar.codePoint}
+                    onClick={() => {
+                      if (onSelectCharacter) {
+                        onSelectCharacter(similarChar)
+                      }
+                    }}
+                    className="aspect-square rounded-md bg-muted hover:bg-accent transition-colors flex items-center justify-center text-xl text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                    title={`U+${similarChar.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}
+                  >
+                    {similarChar.char}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
       </DialogContent>
