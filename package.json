@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "precompute-similar": "bun scripts/precompute-similar.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -66,8 +67,11 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@napi-rs/canvas": "^0.1.60",
+    "cli-progress": "^3.12.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
+    "tsx": "^4.7.0",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }
