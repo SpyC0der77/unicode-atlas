@@ -165,7 +165,7 @@ export default function Home() {
   useEffect(() => {
     const query = searchParams?.get("query")
     if (query) {
-      setSearchQuery(query)
+      setSearchQuery(query) 
     }
   }, [searchParams])
 
