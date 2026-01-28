@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Copy, Download, Check, ExternalLink } from "lucide-react"
+import { Copy, Download, Check, ExternalLink, RefreshCw } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -142,34 +142,36 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     return canvas.toDataURL("image/png")
   }, [])
 
-  const handleFindSimilar = useCallback(async () => {
+  const computeSimilarViaAPI = useCallback(async (forceRecompute: boolean = false) => {
     if (!character) return
 
     const currentCodePoint = character.codePoint
 
-    // First, check pre-computed similar characters
-    const precomputedCodePoints = SIMILAR_CHARACTERS[currentCodePoint]
-    
-    if (precomputedCodePoints !== undefined) {
-      // Use precomputed data
-      const similarChars = precomputedCodePoints
-        .map((codePoint) => {
-          try {
-            return createCharacterFromCodePoint(codePoint)
-          } catch {
-            return null
-          }
-        })
-        .filter((char): char is UnicodeCharacter => char !== null)
+    // If not forcing recompute, check pre-computed similar characters first
+    if (!forceRecompute) {
+      const precomputedCodePoints = SIMILAR_CHARACTERS[currentCodePoint]
       
-      // Only update if still the same character
-      if (currentCodePointRef.current === currentCodePoint) {
-        setSimilarCharacters(similarChars)
+      if (precomputedCodePoints !== undefined) {
+        // Use precomputed data
+        const similarChars = precomputedCodePoints
+          .map((codePoint) => {
+            try {
+              return createCharacterFromCodePoint(codePoint)
+            } catch {
+              return null
+            }
+          })
+          .filter((char): char is UnicodeCharacter => char !== null)
+        
+        // Only update if still the same character
+        if (currentCodePointRef.current === currentCodePoint) {
+          setSimilarCharacters(similarChars)
+        }
+        return
       }
-      return
     }
 
-    // Fallback: call API if no precomputed data exists
+    // Call API to compute similar characters
     if (currentCodePointRef.current === currentCodePoint) {
       setSimilarCharactersLoading(true)
     }
@@ -226,6 +228,18 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
       }
     }
   }, [character, createCharacterFromCodePoint, generateCharacterImage])
+
+  const handleFindSimilar = useCallback(async () => {
+    await computeSimilarViaAPI(false)
+  }, [computeSimilarViaAPI])
+
+  const handleRecomputeSimilar = useCallback(async () => {
+    if (!character) return
+    // Reset the searched ref so it will recompute
+    similarSearchedRef.current = null
+    // Force recompute via API
+    await computeSimilarViaAPI(true)
+  }, [character, computeSimilarViaAPI])
 
   // Automatically find similar characters when character changes
   useEffect(() => {
@@ -358,7 +372,7 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
                           <ExternalLink className="w-3 h-3" />
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent side="left">
                         <p>Wikipedia article does not exist</p>
                       </TooltipContent>
                     </Tooltip>
@@ -399,11 +413,29 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
 
         {(similarCharacters.length > 0 || similarCharactersLoading) && (
           <div className="space-y-3 mt-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-foreground">Similar Characters</h3>
-              {similarCharactersLoading && (
-                <span className="text-xs text-muted-foreground">Loading...</span>
-              )}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground">Similar Characters</h3>
+                {similarCharactersLoading && (
+                  <span className="text-xs text-muted-foreground">Loading...</span>
+                )}
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleRecomputeSimilar}
+                    disabled={similarCharactersLoading || !character}
+                  >
+                    <RefreshCw className={`w-3 h-3 ${similarCharactersLoading ? "animate-spin" : ""}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>Recompute similar characters</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
             {similarCharactersLoading ? (
               <div className="flex items-center justify-center py-8">
