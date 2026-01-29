@@ -252,6 +252,7 @@ export default function Home() {
           const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
           if (!isInput) {
             searchInputRef.current?.focus()
+            e.preventDefault()
           }
         },
         description: "Focus search",
@@ -314,6 +315,7 @@ export default function Home() {
             setSelectedCharacters(allCodePoints)
             e.preventDefault()
           }
+          // If not in selection mode or in an input, let the default behavior happen (native Select All)
         },
         description: "Select all (in selection mode)",
       },

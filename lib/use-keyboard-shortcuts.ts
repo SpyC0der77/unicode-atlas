@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect } from "react"
 
 interface KeyboardShortcut {
   key: string
@@ -20,7 +20,6 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[], enabled: boo
     const handleKeyDown = (e: KeyboardEvent) => {
       for (const shortcut of shortcuts) {
         const keyMatch = shortcut.key.toLowerCase() === e.key.toLowerCase()
-        const ctrlMatch = shortcut.ctrlKey === undefined ? true : shortcut.ctrlKey === (e.ctrlKey || e.metaKey)
         const metaMatch = shortcut.metaKey === undefined ? true : shortcut.metaKey === e.metaKey
         const shiftMatch = shortcut.shiftKey === undefined ? true : shortcut.shiftKey === e.shiftKey
         const altMatch = shortcut.altKey === undefined ? true : shortcut.altKey === e.altKey
@@ -55,9 +54,7 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[], enabled: boo
             }
           }
 
-          if (shortcut.preventDefault !== false) {
-            e.preventDefault()
-          }
+          // Don't preventDefault here - let handlers decide when to prevent
           shortcut.handler(e)
           break
         }
