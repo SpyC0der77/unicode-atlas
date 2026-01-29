@@ -5,6 +5,7 @@ import type { UnicodeCharacter } from "@/lib/unicode-data"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Copy, Check } from "lucide-react"
+import { useKeyboardShortcuts } from "@/lib/use-keyboard-shortcuts"
 
 interface CharacterGridProps {
   characters: UnicodeCharacter[]
@@ -28,11 +29,13 @@ export function CharacterGrid({
 }: CharacterGridProps) {
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const [copiedCodePoint, setCopiedCodePoint] = useState<number | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
   const scrollPositionRef = useRef<number>(0)
   const previousCharactersLengthRef = useRef<number>(characters.length)
   const visibleCountRef = useRef<number>(BATCH_SIZE)
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -60,7 +63,6 @@ export function CharacterGrid({
     const previousLength = previousCharactersLengthRef.current
     const currentLength = characters.length
     const savedScrollPosition = scrollPositionRef.current
-    const currentVisibleCount = visibleCountRef.current
     
     // Detect if this is likely a filter change (similar length, not a complete reset)
     const isLikelyFilterChange = previousLength > 0 && 
@@ -114,8 +116,8 @@ export function CharacterGrid({
     return () => container.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
 
-  const handleCopy = async (character: UnicodeCharacter, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleCopy = async (character: UnicodeCharacter, e?: React.MouseEvent) => {
+    e?.stopPropagation()
     try {
       await navigator.clipboard.writeText(character.char)
       setCopiedCodePoint(character.codePoint)
@@ -126,6 +128,185 @@ export function CharacterGrid({
       console.error("Failed to copy:", error)
     }
   }
+
+  const visibleCharacters = characters.slice(0, visibleCount)
+  const hasMore = visibleCount < characters.length
+
+  // Keyboard navigation shortcuts
+  useKeyboardShortcuts(
+    [
+      {
+        key: "ArrowRight",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedIndex === null) {
+            setFocusedIndex(0)
+            buttonRefs.current[0]?.focus()
+          } else if (focusedIndex < visibleCharacters.length - 1) {
+            const newIndex = focusedIndex + 1
+            setFocusedIndex(newIndex)
+            buttonRefs.current[newIndex]?.focus()
+          }
+        },
+        description: "Navigate right",
+      },
+      {
+        key: "ArrowLeft",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedIndex !== null && focusedIndex > 0) {
+            const newIndex = focusedIndex - 1
+            setFocusedIndex(newIndex)
+            buttonRefs.current[newIndex]?.focus()
+          }
+        },
+        description: "Navigate left",
+      },
+      {
+        key: "ArrowDown",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          // Calculate grid columns based on screen size
+          const getColumns = () => {
+            if (typeof window === "undefined") return 6
+            const width = window.innerWidth
+            if (width >= 1280) return 14 // xl
+            if (width >= 1024) return 12 // lg
+            if (width >= 768) return 10 // md
+            if (width >= 640) return 8 // sm
+            return 6 // default
+          }
+
+          const cols = getColumns()
+          if (focusedIndex === null) {
+            setFocusedIndex(0)
+            buttonRefs.current[0]?.focus()
+          } else if (focusedIndex + cols < visibleCharacters.length) {
+            const newIndex = focusedIndex + cols
+            setFocusedIndex(newIndex)
+            buttonRefs.current[newIndex]?.focus()
+            // Scroll into view
+            buttonRefs.current[newIndex]?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+          }
+        },
+        description: "Navigate down",
+      },
+      {
+        key: "ArrowUp",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          const getColumns = () => {
+            if (typeof window === "undefined") return 6
+            const width = window.innerWidth
+            if (width >= 1280) return 14
+            if (width >= 1024) return 12
+            if (width >= 768) return 10
+            if (width >= 640) return 8
+            return 6
+          }
+
+          const cols = getColumns()
+          if (focusedIndex !== null && focusedIndex >= cols) {
+            const newIndex = focusedIndex - cols
+            setFocusedIndex(newIndex)
+            buttonRefs.current[newIndex]?.focus()
+            buttonRefs.current[newIndex]?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+          }
+        },
+        description: "Navigate up",
+      },
+      {
+        key: "Enter",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedIndex !== null && visibleCharacters[focusedIndex]) {
+            onSelectCharacter(visibleCharacters[focusedIndex])
+          }
+        },
+        description: "Select character",
+      },
+      {
+        key: " ",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedIndex !== null && visibleCharacters[focusedIndex]) {
+            e.preventDefault()
+            onSelectCharacter(visibleCharacters[focusedIndex])
+          }
+        },
+        description: "Select character",
+      },
+      {
+        key: "c",
+        ctrlKey: true,
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedIndex !== null && visibleCharacters[focusedIndex]) {
+            handleCopy(visibleCharacters[focusedIndex])
+          }
+        },
+        description: "Copy character",
+      },
+      {
+        key: "Home",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (visibleCharacters.length > 0) {
+            setFocusedIndex(0)
+            buttonRefs.current[0]?.focus()
+            buttonRefs.current[0]?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+          }
+        },
+        description: "Go to first character",
+      },
+      {
+        key: "End",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (visibleCharacters.length > 0) {
+            const lastIndex = visibleCharacters.length - 1
+            setFocusedIndex(lastIndex)
+            buttonRefs.current[lastIndex]?.focus()
+            buttonRefs.current[lastIndex]?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+          }
+        },
+        description: "Go to last character",
+      },
+    ],
+    !selectionMode
+  )
+
+  // Reset focused index when characters change
+  useEffect(() => {
+    setFocusedIndex(null)
+  }, [characters])
 
   if (isLoading) {
     return (
@@ -147,9 +328,6 @@ export function CharacterGrid({
       </div>
     )
   }
-
-  const visibleCharacters = characters.slice(0, visibleCount)
-  const hasMore = visibleCount < characters.length
 
   return (
     <div 
@@ -184,7 +362,19 @@ export function CharacterGrid({
                   </div>
                 )}
                 <button
+                  ref={(el) => {
+                    buttonRefs.current[index] = el
+                  }}
                   onClick={() => onSelectCharacter(character)}
+                  onFocus={() => setFocusedIndex(index)}
+                  onBlur={() => {
+                    // Only clear focus if not moving to another button
+                    setTimeout(() => {
+                      if (!buttonRefs.current.some(ref => ref === document.activeElement)) {
+                        setFocusedIndex(null)
+                      }
+                    }, 0)
+                  }}
                   className={cn(
                     "w-full h-full flex items-center justify-center rounded-md",
                     "text-2xl text-foreground",
