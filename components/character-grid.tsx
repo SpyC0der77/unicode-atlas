@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import type { UnicodeCharacter } from "@/lib/unicode-data"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Copy, Check } from "lucide-react"
 
 interface CharacterGridProps {
   characters: UnicodeCharacter[]
@@ -26,6 +27,7 @@ export function CharacterGrid({
   onToggleSelect,
 }: CharacterGridProps) {
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
+  const [copiedCodePoint, setCopiedCodePoint] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
   const scrollPositionRef = useRef<number>(0)
@@ -112,6 +114,19 @@ export function CharacterGrid({
     return () => container.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
 
+  const handleCopy = async (character: UnicodeCharacter, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(character.char)
+      setCopiedCodePoint(character.codePoint)
+      setTimeout(() => {
+        setCopiedCodePoint(null)
+      }, 2000)
+    } catch (error) {
+      console.error("Failed to copy:", error)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -148,11 +163,12 @@ export function CharacterGrid({
         <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 gap-2">
           {visibleCharacters.map((character, index) => {
             const isSelected = selectedCodePoints.has(character.codePoint)
+            const isCopied = copiedCodePoint === character.codePoint
             return (
               <div
                 key={`${character.codePoint}-${index}`}
                 className={cn(
-                  "relative aspect-square rounded-md",
+                  "relative aspect-square rounded-md group",
                   "bg-muted hover:bg-accent transition-colors",
                   selectionMode && isSelected && "!bg-primary/20"
                 )}
@@ -177,6 +193,23 @@ export function CharacterGrid({
                   title={`U+${character.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}
                 >
                   {character.char}
+                </button>
+                <button
+                  onClick={(e) => handleCopy(character, e)}
+                  className={cn(
+                    "absolute top-1 right-1 z-10",
+                    "opacity-0 group-hover:opacity-100 transition-opacity",
+                    "p-1 rounded bg-background/90 hover:bg-background",
+                    "shadow-sm border border-border/50",
+                    isCopied && "opacity-100"
+                  )}
+                  title="Copy character"
+                >
+                  {isCopied ? (
+                    <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
                 </button>
               </div>
             )
