@@ -497,6 +497,80 @@ export function getCommonName(codePoint: number): string | undefined {
   return COMMON_NAMES[codePoint]
 }
 
+export function isEmoji(codePoint: number): boolean {
+  // Check if codePoint falls within emoji ranges
+  return (
+    // Emoticons
+    (codePoint >= 0x1F600 && codePoint <= 0x1F64F) ||
+    // Misc Symbols and Pictographs
+    (codePoint >= 0x1F300 && codePoint <= 0x1F5FF) ||
+    // Transport and Map
+    (codePoint >= 0x1F680 && codePoint <= 0x1F6FF) ||
+    // Supplemental Symbols and Pictographs
+    (codePoint >= 0x1F900 && codePoint <= 0x1F9FF) ||
+    // Some emojis in Miscellaneous Symbols
+    (codePoint >= 0x2600 && codePoint <= 0x26FF && (
+      codePoint === 0x2600 || // Black sun with rays
+      codePoint === 0x2601 || // Cloud
+      codePoint === 0x2602 || // Umbrella
+      codePoint === 0x2603 || // Snowman
+      codePoint === 0x260E || // Black telephone
+      codePoint === 0x2611 || // Ballot box with check
+      codePoint === 0x2614 || // Umbrella with rain drops
+      codePoint === 0x2615 || // Hot beverage
+      codePoint === 0x2620 || // Skull and crossbones
+      codePoint === 0x2622 || // Radioactive sign
+      codePoint === 0x2623 || // Biohazard sign
+      codePoint === 0x262E || // Peace symbol
+      codePoint === 0x262F || // Yin yang
+      codePoint === 0x2638 || // Wheel of dharma
+      codePoint === 0x2639 || // White frowning face
+      codePoint === 0x263A || // White smiling face
+      codePoint === 0x2640 || // Female sign
+      codePoint === 0x2642 || // Male sign
+      codePoint === 0x2660 || // Black spade suit
+      codePoint === 0x2663 || // Black club suit
+      codePoint === 0x2665 || // Black heart suit
+      codePoint === 0x2666 || // Black diamond suit
+      codePoint === 0x2669 || // Quarter note
+      codePoint === 0x266A || // Eighth note
+      codePoint === 0x266B || // Beamed eighth notes
+      codePoint === 0x266C || // Beamed sixteenth notes
+      codePoint === 0x266D || // Music flat sign
+      codePoint === 0x266E || // Music natural sign
+      codePoint === 0x266F    // Music sharp sign
+    )) ||
+    // Some emojis in Dingbats
+    (codePoint >= 0x2700 && codePoint <= 0x27BF)
+  )
+}
+
+export function isCharacter(codePoint: number): boolean {
+  try {
+    const char = String.fromCodePoint(codePoint)
+    // Check if it's a letter using Unicode property or regex
+    // This covers Latin, Greek, Cyrillic, Hebrew, Arabic, CJK, etc.
+    return /\p{L}/u.test(char)
+  } catch {
+    return false
+  }
+}
+
+export function isNumber(codePoint: number): boolean {
+  try {
+    const char = String.fromCodePoint(codePoint)
+    // Check if it's a number using Unicode property
+    return /\p{N}/u.test(char)
+  } catch {
+    return false
+  }
+}
+
+export function isSymbol(codePoint: number): boolean {
+  // Symbols are everything that's not a character or number
+  return !isCharacter(codePoint) && !isNumber(codePoint)
+}
+
 export function generateCharactersForCategory(category: UnicodeCategory): UnicodeCharacter[] {
   const characters: UnicodeCharacter[] = []
   for (let codePoint = category.range[0]; codePoint <= category.range[1]; codePoint++) {

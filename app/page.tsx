@@ -15,12 +15,17 @@ import {
   generateCharactersForCategory,
   searchCharacters,
   getCommonName,
+  isCharacter,
+  isNumber,
+  isSymbol,
+  isEmoji,
   type UnicodeCharacter,
 } from "@/lib/unicode-data"
 import { useSearchParams } from "next/navigation"
 
 export default function Home() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["characters", "symbols", "numbers", "emojis"])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCharacter, setSelectedCharacter] = useState<UnicodeCharacter | null>(null)
   const [characterModalOpen, setCharacterModalOpen] = useState(false)
@@ -90,8 +95,48 @@ export default function Home() {
       }
     }
     
+    // Apply type filter
+    const emojisEnabled = selectedTypes.includes("emojis")
+    const nonEmojiTypes = ["characters", "symbols", "numbers"]
+    const selectedNonEmojiTypes = selectedTypes.filter(t => nonEmojiTypes.includes(t))
+    
+    // Separate emojis from other characters
+    const emojiChars: UnicodeCharacter[] = []
+    const nonEmojiChars: UnicodeCharacter[] = []
+    
+    for (const char of result) {
+      if (isEmoji(char.codePoint)) {
+        emojiChars.push(char)
+      } else {
+        nonEmojiChars.push(char)
+      }
+    }
+    
+    // Filter non-emoji characters by type
+    let filteredResult: UnicodeCharacter[] = []
+    if (selectedNonEmojiTypes.length === 0 || selectedNonEmojiTypes.length === 3) {
+      // All non-emoji types selected or none selected - show all non-emoji chars
+      filteredResult = nonEmojiChars
+    } else {
+      // Filter non-emoji characters by selected types
+      filteredResult = nonEmojiChars.filter(char => {
+        const codePoint = char.codePoint
+        if (selectedTypes.includes("characters") && isCharacter(codePoint)) return true
+        if (selectedTypes.includes("symbols") && isSymbol(codePoint)) return true
+        if (selectedTypes.includes("numbers") && isNumber(codePoint)) return true
+        return false
+      })
+    }
+    
+    // If emojis are enabled, add them back (emojis trump all other filters)
+    if (emojisEnabled) {
+      result = [...filteredResult, ...emojiChars]
+    } else {
+      result = filteredResult
+    }
+    
     return result
-  }, [selectedCategories, searchQuery, drawnCharacters, selectedCharacters])
+  }, [selectedCategories, selectedTypes, searchQuery, drawnCharacters, selectedCharacters])
 
   const handleSelectCharacter = (character: UnicodeCharacter) => {
     if (selectionMode) {
@@ -118,11 +163,6 @@ export default function Home() {
       }
       return !prev
     })
-  }
-
-  const handleSelectAllVisible = () => {
-    const visibleCodePoints = new Set(characters.map((c) => c.codePoint))
-    setSelectedCharacters(visibleCodePoints)
   }
 
   const handleClearSelection = () => {
@@ -159,6 +199,15 @@ export default function Home() {
 
   const handleClearAll = () => {
     setSelectedCategories([])
+    setDrawnCharacters([])
+  }
+
+  const handleToggleType = (type: string) => {
+    setSelectedTypes((prev) =>
+      prev.includes(type)
+        ? prev.filter((t) => t !== type)
+        : [...prev, type]
+    )
     setDrawnCharacters([])
   }
 
@@ -246,6 +295,8 @@ export default function Home() {
           onToggleCategory={handleToggleCategory}
           onSelectAll={handleSelectAll}
           onClearAll={handleClearAll}
+          selectedTypes={selectedTypes}
+          onToggleType={handleToggleType}
         />
         
         <div className="flex-1 flex flex-col overflow-hidden">
