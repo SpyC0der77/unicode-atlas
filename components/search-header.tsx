@@ -15,6 +15,7 @@ interface SearchHeaderProps {
   starCount?: number | null
   onClearDrawing?: () => void
   hasDrawingResults?: boolean
+  searchInputRef?: React.Ref<HTMLInputElement>
 }
 
 export function SearchHeader({
@@ -26,6 +27,7 @@ export function SearchHeader({
   starCount,
   onClearDrawing,
   hasDrawingResults = false,
+  searchInputRef,
 }: SearchHeaderProps) {
   return (
     <header className="border-b border-border bg-card p-4">
@@ -36,6 +38,7 @@ export function SearchHeader({
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Search characters, code points..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}

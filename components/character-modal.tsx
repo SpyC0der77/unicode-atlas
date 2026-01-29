@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Copy, Download, Check, ExternalLink, RefreshCw } from "lucide-react"
+import { useKeyboardShortcuts } from "@/lib/use-keyboard-shortcuts"
 import {
   Dialog,
   DialogContent,
@@ -43,8 +44,10 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
   const [wikipediaExists, setWikipediaExists] = useState<boolean | null>(null)
   const [similarCharacters, setSimilarCharacters] = useState<UnicodeCharacter[]>([])
   const [similarCharactersLoading, setSimilarCharactersLoading] = useState(false)
+  const [focusedSimilarIndex, setFocusedSimilarIndex] = useState<number | null>(null)
   const currentCodePointRef = useRef<number | null>(null)
   const similarSearchedRef = useRef<number | null>(null)
+  const similarButtonRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   // Reset state when modal closes or character becomes null
   useEffect(() => {
@@ -53,8 +56,95 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
       similarSearchedRef.current = null
       setSimilarCharacters([])
       setSimilarCharactersLoading(false)
+      setFocusedSimilarIndex(null)
     }
   }, [character, open])
+
+  // Keyboard shortcuts for modal
+  useKeyboardShortcuts(
+    [
+      {
+        key: "c",
+        ctrlKey: true,
+        handler: () => {
+          if (character) {
+            copyToClipboard(character.char, "Character")
+          }
+        },
+        description: "Copy character",
+      },
+      {
+        key: "Escape",
+        handler: () => {
+          onOpenChange(false)
+        },
+        description: "Close modal",
+      },
+      {
+        key: "ArrowRight",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (similarCharacters.length > 0) {
+            if (focusedSimilarIndex === null) {
+              setFocusedSimilarIndex(0)
+              similarButtonRefs.current[0]?.focus()
+            } else if (focusedSimilarIndex < similarCharacters.length - 1) {
+              const newIndex = focusedSimilarIndex + 1
+              setFocusedSimilarIndex(newIndex)
+              similarButtonRefs.current[newIndex]?.focus()
+            }
+          }
+        },
+        description: "Navigate similar characters right",
+      },
+      {
+        key: "ArrowLeft",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (similarCharacters.length > 0 && focusedSimilarIndex !== null && focusedSimilarIndex > 0) {
+            const newIndex = focusedSimilarIndex - 1
+            setFocusedSimilarIndex(newIndex)
+            similarButtonRefs.current[newIndex]?.focus()
+          }
+        },
+        description: "Navigate similar characters left",
+      },
+      {
+        key: "Enter",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedSimilarIndex !== null && similarCharacters[focusedSimilarIndex] && onSelectCharacter) {
+            onSelectCharacter(similarCharacters[focusedSimilarIndex])
+          }
+        },
+        description: "Select focused similar character",
+      },
+      {
+        key: " ",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (isInput) return
+
+          if (focusedSimilarIndex !== null && similarCharacters[focusedSimilarIndex] && onSelectCharacter) {
+            e.preventDefault()
+            onSelectCharacter(similarCharacters[focusedSimilarIndex])
+          }
+        },
+        description: "Select focused similar character",
+      },
+    ],
+    open && character !== null
+  )
 
   useEffect(() => {
     if (!character || !open) {
@@ -443,13 +533,24 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
               </div>
             ) : similarCharacters.length > 0 ? (
               <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {similarCharacters.map((similarChar) => (
+                {similarCharacters.map((similarChar, index) => (
                   <button
                     key={similarChar.codePoint}
+                    ref={(el) => {
+                      similarButtonRefs.current[index] = el
+                    }}
                     onClick={() => {
                       if (onSelectCharacter) {
                         onSelectCharacter(similarChar)
                       }
+                    }}
+                    onFocus={() => setFocusedSimilarIndex(index)}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        if (!similarButtonRefs.current.some(ref => ref === document.activeElement)) {
+                          setFocusedSimilarIndex(null)
+                        }
+                      }, 0)
                     }}
                     className="aspect-square rounded-md bg-muted hover:bg-accent transition-colors flex items-center justify-center text-xl text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
                     title={`U+${similarChar.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}

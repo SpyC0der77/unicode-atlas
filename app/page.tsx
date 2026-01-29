@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { CategoryFilter } from "@/components/category-sidebar"
 import { SearchHeader } from "@/components/search-header"
 import { CharacterGrid } from "@/components/character-grid"
@@ -19,6 +19,7 @@ import {
   type UnicodeCharacter,
 } from "@/lib/unicode-data"
 import { useSearchParams } from "next/navigation"
+import { useKeyboardShortcuts } from "@/lib/use-keyboard-shortcuts"
 
 export default function Home() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -32,6 +33,7 @@ export default function Home() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [starCount, setStarCount] = useState<number | null>(null)
   const searchParams = useSearchParams()
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   const createCharacterFromCodePoint = (codePoint: number): UnicodeCharacter => {
     const char = String.fromCodePoint(codePoint)
@@ -232,6 +234,93 @@ export default function Home() {
     fetchStarCount()
   }, [])
 
+  // Global keyboard shortcuts
+  useKeyboardShortcuts(
+    [
+      {
+        key: "k",
+        ctrlKey: true,
+        handler: () => {
+          searchInputRef.current?.focus()
+        },
+        description: "Focus search",
+      },
+      {
+        key: "/",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          if (!isInput) {
+            searchInputRef.current?.focus()
+          }
+        },
+        description: "Focus search",
+      },
+      {
+        key: "s",
+        ctrlKey: true,
+        handler: () => {
+          handleToggleSelectionMode()
+        },
+        description: "Toggle selection mode",
+      },
+      {
+        key: "d",
+        ctrlKey: true,
+        handler: () => {
+          if (!selectionMode) {
+            setDrawingModalOpen(true)
+          }
+        },
+        description: "Open drawing modal",
+      },
+      {
+        key: "Escape",
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
+          
+          if (isInput && searchQuery) {
+            // Clear search if Escape pressed in search input
+            handleSearchChange("")
+            searchInputRef.current?.blur()
+          } else if (drawnCharacters.length > 0) {
+            // Clear drawing results
+            setDrawnCharacters([])
+          } else if (selectionMode) {
+            // Exit selection mode
+            handleToggleSelectionMode()
+          } else if (characterModalOpen) {
+            // Close character modal (handled by Radix Dialog, but we can ensure it closes)
+            setCharacterModalOpen(false)
+          } else if (drawingModalOpen) {
+            // Close drawing modal
+            setDrawingModalOpen(false)
+          }
+        },
+        description: "Close modals / Clear search / Exit selection mode",
+      },
+      {
+        key: "a",
+        ctrlKey: true,
+        shiftKey: false,
+        handler: (e) => {
+          const target = e.target as HTMLElement
+          const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+          
+          if (selectionMode && !isInput) {
+            // Select all visible characters in selection mode
+            const allCodePoints = new Set(characters.map(c => c.codePoint))
+            setSelectedCharacters(allCodePoints)
+            e.preventDefault()
+          }
+        },
+        description: "Select all (in selection mode)",
+      },
+    ],
+    !characterModalOpen && !drawingModalOpen
+  )
+
   return (
     <main className="h-screen flex flex-col bg-background">
       <SearchHeader
@@ -243,6 +332,7 @@ export default function Home() {
         starCount={starCount}
         onClearDrawing={() => setDrawnCharacters([])}
         hasDrawingResults={drawnCharacters.length > 0}
+        searchInputRef={searchInputRef}
       />
       
       {selectionMode && (
