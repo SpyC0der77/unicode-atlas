@@ -1,9 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Github, Star } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { CategoryFilter } from "@/components/category-sidebar"
 import { SearchHeader } from "@/components/search-header"
 import { CharacterGrid } from "@/components/character-grid"
@@ -237,48 +234,15 @@ export default function Home() {
 
   return (
     <main className="h-screen flex flex-col bg-background">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h1 className="text-xl font-semibold text-foreground">Unicode Atlas</h1>
-        <div className="flex items-center gap-4">
-          {drawnCharacters.length > 0 && (
-            <button
-              onClick={() => setDrawnCharacters([])}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Clear drawing results
-            </button>
-          )}
-          <ThemeToggle />
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-          >
-            <a
-              href="https://github.com/SpyC0der77/unicode-detector"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub repository"
-            >
-              <Github className="w-4 h-4" />
-              <span>GitHub</span>
-              {starCount !== null && (
-                <span className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-current" />
-                  <span>{starCount.toLocaleString()}</span>
-                </span>
-              )}
-            </a>
-          </Button>
-        </div>
-      </div>
-      
       <SearchHeader
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onDrawClick={() => setDrawingModalOpen(true)}
         selectionMode={selectionMode}
         onToggleSelectionMode={handleToggleSelectionMode}
+        starCount={starCount}
+        onClearDrawing={() => setDrawnCharacters([])}
+        hasDrawingResults={drawnCharacters.length > 0}
       />
       
       {selectionMode && (
