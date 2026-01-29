@@ -28,10 +28,62 @@ export function CharacterGrid({
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const containerRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
+  const scrollPositionRef = useRef<number>(0)
+  const previousCharactersLengthRef = useRef<number>(characters.length)
+  const visibleCountRef = useRef<number>(BATCH_SIZE)
 
-  // Reset visible count when characters change
+  // Keep ref in sync with state
   useEffect(() => {
-    setVisibleCount(BATCH_SIZE)
+    visibleCountRef.current = visibleCount
+  }, [visibleCount])
+
+  // Save scroll position continuously
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      scrollPositionRef.current = container.scrollTop
+    }
+
+    container.addEventListener("scroll", handleScroll, { passive: true })
+    return () => container.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Handle characters array changes - preserve scroll position when filtering
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const previousLength = previousCharactersLengthRef.current
+    const currentLength = characters.length
+    const savedScrollPosition = scrollPositionRef.current
+    const currentVisibleCount = visibleCountRef.current
+    
+    // Detect if this is likely a filter change (similar length, not a complete reset)
+    const isLikelyFilterChange = previousLength > 0 && 
+                                  currentLength > 0 &&
+                                  Math.abs(currentLength - previousLength) < previousLength * 0.8 &&
+                                  savedScrollPosition > 100
+
+    if (isLikelyFilterChange) {
+      // Preserve visible count for filtering - don't reset it
+      // Restore scroll position after render using double RAF for better timing
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (containerRef.current && savedScrollPosition > 0) {
+            containerRef.current.scrollTop = savedScrollPosition
+          }
+        })
+      })
+    } else {
+      // Full reset - reset visible count and scroll to top
+      setVisibleCount(BATCH_SIZE)
+      scrollPositionRef.current = 0
+      container.scrollTop = 0
+    }
+
+    previousCharactersLengthRef.current = currentLength
   }, [characters])
 
   const handleScroll = useCallback(() => {
