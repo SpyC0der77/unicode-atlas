@@ -381,9 +381,31 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     setTimeout(() => setCopiedField(null), 2000)
   }
 
+  // Escape XML entities for safe insertion into XML/SVG content
+  const escapeXml = (text: string): string => {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;")
+  }
+
+  // Sanitize filename by removing or replacing problematic characters
+  const sanitizeFilename = (text: string): string => {
+    return text
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "") // Remove invalid filename characters
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/[^\w\-.]/g, "") // Keep only word chars, hyphens, and dots
+      .toLowerCase()
+      .substring(0, 100) // Limit length
+  }
+
   const downloadSvg = () => {
+    // Escape XML entities for safe insertion into SVG text content
+    const escapedChar = escapeXml(character.char)
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white">${character.char}</text>
+  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white">${escapedChar}</text>
 </svg>`
     const blob = new Blob([svg], { type: "image/svg+xml" })
     const url = URL.createObjectURL(blob)
@@ -418,20 +440,24 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     const a = document.createElement("a")
     a.href = url
     const suffix = transparent ? "-transparent" : ""
-    const fontSuffix = fontFamily ? `-${fontFamily.split(",")[0].trim().replace(/'/g, "").replace(/\s+/g, "-").toLowerCase()}` : ""
+    const fontSuffix = fontFamily ? `-${sanitizeFilename(fontFamily.split(",")[0].trim())}` : ""
     a.download = `unicode-${character.codePoint.toString(16).toUpperCase()}${fontSuffix}${suffix}.png`
     a.click()
   }
 
   const downloadSvgWithFont = (fontFamily: string) => {
+    // Escape XML entities for both text content and attribute values
+    const escapedChar = escapeXml(character.char)
+    const escapedFontFamily = escapeXml(fontFamily)
+    
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white" fontFamily="${fontFamily.replace(/'/g, "&apos;")}">${character.char}</text>
+  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white" fontFamily="${escapedFontFamily}">${escapedChar}</text>
 </svg>`
     const blob = new Blob([svg], { type: "image/svg+xml" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    const fontSuffix = fontFamily.split(",")[0].trim().replace(/'/g, "").replace(/\s+/g, "-").toLowerCase()
+    const fontSuffix = sanitizeFilename(fontFamily.split(",")[0].trim())
     a.download = `unicode-${character.codePoint.toString(16).toUpperCase()}-${fontSuffix}.svg`
     a.click()
     URL.revokeObjectURL(url)
