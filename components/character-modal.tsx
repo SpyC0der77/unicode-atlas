@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Copy, Download, Check, ExternalLink, RefreshCw } from "lucide-react"
+import { Copy, Download, Check, ExternalLink, RefreshCw, Type } from "lucide-react"
 import { useKeyboardShortcuts } from "@/lib/use-keyboard-shortcuts"
 import {
   Dialog,
@@ -17,6 +17,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ActionDropdown } from "@/components/action-dropdown"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import type { UnicodeCharacter } from "@/lib/unicode-data"
 import {
   UNICODE_CATEGORIES,
@@ -45,9 +51,27 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
   const [similarCharacters, setSimilarCharacters] = useState<UnicodeCharacter[]>([])
   const [similarCharactersLoading, setSimilarCharactersLoading] = useState(false)
   const [focusedSimilarIndex, setFocusedSimilarIndex] = useState<number | null>(null)
+  const [selectedFont, setSelectedFont] = useState<string>("sans-serif")
+  const [fontExportModalOpen, setFontExportModalOpen] = useState(false)
+  const [fontToExport, setFontToExport] = useState<{ id: string; name: string; family: string } | null>(null)
   const currentCodePointRef = useRef<number | null>(null)
   const similarSearchedRef = useRef<number | null>(null)
   const similarButtonRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+  const fonts = [
+    { id: "sans-serif", name: "Sans Serif", family: "sans-serif" },
+    { id: "serif", name: "Serif", family: "serif" },
+    { id: "monospace", name: "Monospace", family: "monospace" },
+    { id: "cursive", name: "Cursive", family: "cursive" },
+    { id: "fantasy", name: "Fantasy", family: "fantasy" },
+    { id: "system", name: "System", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+    { id: "georgia", name: "Georgia", family: "Georgia, serif" },
+    { id: "times", name: "Times New Roman", family: "'Times New Roman', Times, serif" },
+    { id: "courier", name: "Courier New", family: "'Courier New', Courier, monospace" },
+    { id: "arial", name: "Arial", family: "Arial, sans-serif" },
+    { id: "verdana", name: "Verdana", family: "Verdana, sans-serif" },
+    { id: "helvetica", name: "Helvetica", family: "Helvetica, Arial, sans-serif" },
+  ]
 
   // Reset state when modal closes or character becomes null
   useEffect(() => {
@@ -57,6 +81,9 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
       setSimilarCharacters([])
       setSimilarCharactersLoading(false)
       setFocusedSimilarIndex(null)
+      setSelectedFont("sans-serif")
+      setFontExportModalOpen(false)
+      setFontToExport(null)
     }
   }, [character, open])
 
@@ -354,9 +381,31 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     setTimeout(() => setCopiedField(null), 2000)
   }
 
+  // Escape XML entities for safe insertion into XML/SVG content
+  const escapeXml = (text: string): string => {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;")
+  }
+
+  // Sanitize filename by removing or replacing problematic characters
+  const sanitizeFilename = (text: string): string => {
+    return text
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "") // Remove invalid filename characters
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/[^\w\-.]/g, "") // Keep only word chars, hyphens, and dots
+      .toLowerCase()
+      .substring(0, 100) // Limit length
+  }
+
   const downloadSvg = () => {
+    // Escape XML entities for safe insertion into SVG text content
+    const escapedChar = escapeXml(character.char)
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white">${character.char}</text>
+  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white">${escapedChar}</text>
 </svg>`
     const blob = new Blob([svg], { type: "image/svg+xml" })
     const url = URL.createObjectURL(blob)
@@ -367,7 +416,7 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     URL.revokeObjectURL(url)
   }
 
-  const downloadPng = (transparent: boolean) => {
+  const downloadPng = (transparent: boolean, fontFamily?: string) => {
     const canvas = document.createElement("canvas")
     canvas.width = 200
     canvas.height = 200
@@ -382,7 +431,7 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
       ctx.fillStyle = "#000000"
     }
     
-    ctx.font = "120px sans-serif"
+    ctx.font = `120px ${fontFamily || "sans-serif"}`
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillText(character.char, 100, 100)
@@ -391,8 +440,32 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
     const a = document.createElement("a")
     a.href = url
     const suffix = transparent ? "-transparent" : ""
-    a.download = `unicode-${character.codePoint.toString(16).toUpperCase()}${suffix}.png`
+    const fontSuffix = fontFamily ? `-${sanitizeFilename(fontFamily.split(",")[0].trim())}` : ""
+    a.download = `unicode-${character.codePoint.toString(16).toUpperCase()}${fontSuffix}${suffix}.png`
     a.click()
+  }
+
+  const downloadSvgWithFont = (fontFamily: string) => {
+    // Escape XML entities for both text content and attribute values
+    const escapedChar = escapeXml(character.char)
+    const escapedFontFamily = escapeXml(fontFamily)
+    
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <text x="50" y="70" fontSize="60" textAnchor="middle" fill="white" fontFamily="${escapedFontFamily}">${escapedChar}</text>
+</svg>`
+    const blob = new Blob([svg], { type: "image/svg+xml" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    const fontSuffix = sanitizeFilename(fontFamily.split(",")[0].trim())
+    a.download = `unicode-${character.codePoint.toString(16).toUpperCase()}-${fontSuffix}.svg`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleFontClick = (font: { id: string; name: string; family: string }) => {
+    setFontToExport(font)
+    setFontExportModalOpen(true)
   }
 
 
@@ -419,7 +492,12 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
         <div className="flex flex-col items-center gap-6 py-4">
           <div className="flex flex-col items-center w-full">
             <div className="flex items-center justify-center w-48 h-48 rounded-t-lg border-x border-t bg-muted">
-              <span className="text-7xl text-foreground">{character.char}</span>
+              <span 
+                className="text-7xl text-foreground"
+                style={{ fontFamily: fonts.find(f => f.id === selectedFont)?.family || "sans-serif" }}
+              >
+                {character.char}
+              </span>
             </div>
             <div className="flex gap-2 justify-center px-4 py-3 w-48 rounded-b-lg border-x border-b bg-card shadow-sm">
               <Button variant="outline" size="sm" onClick={downloadSvg}>
@@ -445,121 +523,228 @@ export function CharacterModal({ character, open, onOpenChange, onSelectCharacte
           </div>
         </div>
 
-        <div className="space-y-2">
-          {infoRows.map((row) => (
-            <div
-              key={row.label}
-              className="flex items-center justify-between p-2 rounded-md bg-muted/50"
-            >
-              <span className="text-sm text-muted-foreground">{row.label}</span>
-              <div className="flex items-center gap-2">
-                {row.link ? (
-                  wikipediaExists === false ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="text-sm font-mono text-muted-foreground flex items-center gap-1 opacity-50 cursor-not-allowed">
-                          <code>{row.displayValue || row.value}</code>
-                          <ExternalLink className="w-3 h-3" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>Wikipedia article does not exist</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <a
-                      href={row.value}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-mono text-foreground hover:underline flex items-center gap-1"
-                    >
-                      <code>{row.displayValue || row.value}</code>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )
-                ) : (
-                  <>
-                    <code className="text-sm font-mono text-foreground">{row.value}</code>
-                    {row.copyable && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => copyToClipboard(row.value, row.label)}
-                      >
-                        {copiedField === row.label ? (
-                          <Check className="w-3 h-3 text-green-500" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {(similarCharacters.length > 0 || similarCharactersLoading) && (
-          <div className="space-y-3 mt-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-foreground">Similar Characters</h3>
-                {similarCharactersLoading && (
-                  <span className="text-xs text-muted-foreground">Loading...</span>
-                )}
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={handleRecomputeSimilar}
-                    disabled={similarCharactersLoading || !character}
+        <Accordion type="multiple" defaultValue={["info"]} className="w-full">
+          <AccordionItem value="info">
+            <AccordionTrigger className="text-sm font-semibold">Information</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                {infoRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex items-center justify-between p-2 rounded-md bg-muted/50"
                   >
-                    <RefreshCw className={`w-3 h-3 ${similarCharactersLoading ? "animate-spin" : ""}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p>Recompute similar characters</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            {similarCharactersLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-sm text-muted-foreground">Searching for similar characters...</div>
+                    <span className="text-sm text-muted-foreground">{row.label}</span>
+                    <div className="flex items-center gap-2">
+                      {row.link ? (
+                        wikipediaExists === false ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm font-mono text-muted-foreground flex items-center gap-1 opacity-50 cursor-not-allowed">
+                                <code>{row.displayValue || row.value}</code>
+                                <ExternalLink className="w-3 h-3" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              <p>Wikipedia article does not exist</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <a
+                            href={row.value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-mono text-foreground hover:underline flex items-center gap-1"
+                          >
+                            <code>{row.displayValue || row.value}</code>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )
+                      ) : (
+                        <>
+                          <code className="text-sm font-mono text-foreground">{row.value}</code>
+                          {row.copyable && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(row.value, row.label)}
+                            >
+                              {copiedField === row.label ? (
+                                <Check className="w-3 h-3 text-green-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : similarCharacters.length > 0 ? (
-              <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {similarCharacters.map((similarChar, index) => (
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="font-preview">
+            <AccordionTrigger className="text-sm font-semibold">
+              <div className="flex items-center gap-2">
+                <Type className="w-4 h-4 text-muted-foreground" />
+                Font Preview
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1">
+                {fonts.map((font) => (
                   <button
-                    key={similarChar.codePoint}
-                    ref={(el) => {
-                      similarButtonRefs.current[index] = el
-                    }}
-                    onClick={() => {
-                      if (onSelectCharacter) {
-                        onSelectCharacter(similarChar)
+                    key={font.id}
+                    onClick={(e) => {
+                      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                        setSelectedFont(font.id)
+                      } else {
+                        handleFontClick(font)
                       }
                     }}
-                    onFocus={() => setFocusedSimilarIndex(index)}
-                    onBlur={() => {
-                      setTimeout(() => {
-                        if (!similarButtonRefs.current.some(ref => ref === document.activeElement)) {
-                          setFocusedSimilarIndex(null)
-                        }
-                      }, 0)
-                    }}
-                    className="aspect-square rounded-md bg-muted hover:bg-accent transition-colors flex items-center justify-center text-xl text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-                    title={`U+${similarChar.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}
+                    className={`p-3 rounded-md border transition-colors text-left ${
+                      selectedFont === font.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-muted/50 hover:bg-muted"
+                    }`}
+                    title="Click to export • Shift/Ctrl+Click to preview"
                   >
-                    {similarChar.char}
+                    <div className="text-xs text-muted-foreground mb-1 truncate" title={font.name}>
+                      {font.name}
+                    </div>
+                    <div
+                      className="text-2xl text-foreground"
+                      style={{ fontFamily: font.family }}
+                    >
+                      {character.char}
+                    </div>
                   </button>
                 ))}
               </div>
-            ) : null}
+            </AccordionContent>
+          </AccordionItem>
+
+          {(similarCharacters.length > 0 || similarCharactersLoading) && (
+            <AccordionItem value="similar-characters">
+              <AccordionTrigger className="text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  Similar Characters
+                  {similarCharactersLoading && (
+                    <span className="text-xs text-muted-foreground font-normal">Loading...</span>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={handleRecomputeSimilar}
+                          disabled={similarCharactersLoading || !character}
+                        >
+                          <RefreshCw className={`w-3 h-3 ${similarCharactersLoading ? "animate-spin" : ""}`} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <p>Recompute similar characters</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {similarCharactersLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-sm text-muted-foreground">Searching for similar characters...</div>
+                    </div>
+                  ) : similarCharacters.length > 0 ? (
+                    <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      {similarCharacters.map((similarChar, index) => (
+                        <button
+                          key={similarChar.codePoint}
+                          ref={(el) => {
+                            similarButtonRefs.current[index] = el
+                          }}
+                          onClick={() => {
+                            if (onSelectCharacter) {
+                              onSelectCharacter(similarChar)
+                            }
+                          }}
+                          onFocus={() => setFocusedSimilarIndex(index)}
+                          onBlur={() => {
+                            setTimeout(() => {
+                              if (!similarButtonRefs.current.some(ref => ref === document.activeElement)) {
+                                setFocusedSimilarIndex(null)
+                              }
+                            }, 0)
+                          }}
+                          className="aspect-square rounded-md bg-muted hover:bg-accent transition-colors flex items-center justify-center text-xl text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                          title={`U+${similarChar.codePoint.toString(16).toUpperCase().padStart(4, "0")}`}
+                        >
+                          {similarChar.char}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+        </Accordion>
+      </DialogContent>
+    </Dialog>
+
+    {/* Font Export Modal */}
+    <Dialog open={fontExportModalOpen} onOpenChange={setFontExportModalOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-foreground">Export Character in {fontToExport?.name}</DialogTitle>
+        </DialogHeader>
+        
+        {fontToExport && (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <div className="flex flex-col items-center w-full">
+              <div className="flex items-center justify-center w-48 h-48 rounded-lg border bg-muted">
+                <span 
+                  className="text-7xl text-foreground"
+                  style={{ fontFamily: fontToExport.family }}
+                >
+                  {character.char}
+                </span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-2">
+                {fontToExport.name}
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-center w-full">
+              <Button variant="outline" size="sm" onClick={() => {
+                downloadSvgWithFont(fontToExport.family)
+                setFontExportModalOpen(false)
+              }}>
+                <Download className="w-4 h-4 mr-2" />
+                SVG
+              </Button>
+              <ActionDropdown
+                label="PNG"
+                size="sm"
+                actions={[
+                  { label: "PNG", id: "png-solid" },
+                  { label: "PNG (Transparent)", id: "png-transparent" },
+                ]}
+                onAction={(actionId) => {
+                  if (actionId === "png-solid") {
+                    downloadPng(false, fontToExport.family)
+                  } else if (actionId === "png-transparent") {
+                    downloadPng(true, fontToExport.family)
+                  }
+                  setFontExportModalOpen(false)
+                }}
+              />
+            </div>
           </div>
         )}
       </DialogContent>
