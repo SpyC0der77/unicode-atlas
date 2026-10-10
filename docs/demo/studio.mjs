@@ -43,7 +43,7 @@ export async function record({name,url,tour,output}) {
    const shot=await page.screenshot({type:'png',animations:'allow'});
    const width=Math.round(W/cam.z),height=Math.round(H/cam.z);
    const left=Math.round(clamp(cam.x-width/2,0,W-width)),top=Math.round(clamp(cam.y-height/2,0,H-height));
-   await sharp(shot).extract({left,top,width,height}).resize(OW,OH).png().toFile(join(frames,`${String(frame++).padStart(5,'0')}.png`));
+   await sharp(shot).extract({left,top,width,height}).resize(OW,OH).removeAlpha().png().toFile(join(frames,`${String(frame++).padStart(5,'0')}.png`));
    await page.waitForTimeout(Math.max(0,1000/FPS-(Date.now()-start)));
   },
   async beat(seconds=.6){for(let i=0;i<Math.round(seconds*FPS);i++)await this.frame();},
@@ -65,7 +65,8 @@ export async function record({name,url,tour,output}) {
   const input=['-y','-hide_banner','-loglevel','error','-framerate',String(FPS),'-i',join(frames,'%05d.png')];
   const mp4=spawnSync('ffmpeg',[...input,'-c:v','libx264','-crf','23','-preset','medium','-pix_fmt','yuv420p','-movflags','+faststart',join(output,'demo.mp4')],{encoding:'utf8'});
   if(mp4.status!==0)throw Error(mp4.stderr);
-  const gif=spawnSync('ffmpeg',[...input,'-filter_complex','fps=10,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle','-loop','0',join(output,'demo.gif')],{encoding:'utf8'});
+  // Encode the GIF from the complete MP4 to keep input pixel formats stable.
+  const gif=spawnSync('ffmpeg',['-y','-hide_banner','-loglevel','error','-i',join(output,'demo.mp4'),'-filter_complex','fps=10,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle','-loop','0',join(output,'demo.gif')],{encoding:'utf8'});
   if(gif.status!==0)throw Error(gif.stderr);
   await writeFile(join(output,'capture.json'),JSON.stringify({name,url,width:OW,height:OH,fps:FPS,duration:film.seconds,frames,events},null,2));
   console.log(name,'DONE',film.seconds.toFixed(1),'seconds');
