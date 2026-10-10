@@ -1,155 +1,54 @@
-# Unicode Detector
+# Unicode Atlas
 
-A modern web application for exploring, searching, and recognizing Unicode characters. Draw or upload images to find matching Unicode symbols, browse by category, and download characters in various formats.
+Search and browse Unicode characters, draw a symbol to find matches, and export characters as images.
 
-## Features
+![Unicode character search](docs/images/app.png)
 
-- **Search Unicode Characters** - Search by character, code point, or common name
-- **Category Filtering** - Browse characters by Unicode categories (Latin, Greek, Math Operators, Arrows, etc.)
-- **Draw to Recognize** - Draw a character and find matching Unicode symbols
-- **Image Upload** - Upload images with automatic background removal for character recognition
-- **Character Details** - View detailed information including code points, common names, categories, and similar characters
-- **Similar Characters** - Automatically discover visually similar Unicode characters for any character
-- **Export Options** - Download characters as SVG or PNG (with transparent or solid backgrounds)
-- **Modern UI** - Built with Next.js, React, Tailwind CSS, and Shadcn/UI
+[Live demo](https://unicode-atlas.vercel.app)
 
-## Getting Started
+## Use the app
 
-### Prerequisites
+- Search by character, code point, or name, such as `€`, `U+20AC`, or `euro`.
+- Filter by Unicode category and character type.
+- Open a character to inspect its code point, category, and visually similar characters.
+- Open the drawing tool to sketch a symbol or upload an image for recognition.
+- Download individual characters as SVG or PNG, with a solid or transparent background.
+- Turn on selection mode to export multiple characters in a ZIP file.
 
-- Node.js 18+
-- npm, yarn, pnpm, or bun
+Drawing recognition uses [ShapeCatcher](https://shapecatcher.com) through the app's `/api/recognize` endpoint. Browsing and export run in the browser; recognition requires the external service.
 
-### Installation
+## Run locally
 
-1. Clone the repository:
+Use Node.js 22 and npm. Bun is also needed for the optional similarity-data generation script.
+
 ```bash
-git clone https://github.com/SpyC0der77/unicode-detector.git
-cd unicode-detector
-```
-
-2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
-```
-
-3. Run the development server:
-```bash
+git clone https://github.com/SpyC0der77/unicode-atlas.git
+cd unicode-atlas
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [localhost:3000](http://localhost:3000). No API key or environment file is required.
 
-## Usage
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the development server |
+| `npm run build` | Build the production app |
+| `npm start` | Serve a production build |
+| `npm run lint` | Run ESLint |
+| `npm run precompute-similar` | Rebuild the precomputed similarity data with Bun |
 
-### Searching Characters
+Run `build` before `start`. Similarity generation uses `@napi-rs/canvas` and can take time; the repo already includes the generated data.
 
-- Use the search bar to find characters by:
-  - Character itself (e.g., "€")
-  - Code point (e.g., "U+20AC" or "20AC")
-  - Common name (e.g., "euro", "space", "arrow")
+## Source layout
 
-### Filtering by Category
-
-- Use the sidebar to filter characters by Unicode categories
-- Click "All" to select all categories
-- Click "None" to clear all selections
-
-### Drawing Characters
-
-1. Click the pencil icon in the search bar
-2. Draw a character on the canvas
-3. Click "Search" to find matching Unicode characters
-4. Results will display matching characters
-5. Click "About" in the drawing modal to learn more about how character recognition works
-
-### Uploading Images
-
-1. Click the pencil icon in the search bar
-2. Click "Upload" button
-3. Select an image file
-4. The app will automatically detect and remove plain color backgrounds
-5. Click "Search" to find matching Unicode characters
-
-### Character Details
-
-Click any character to view:
-- Character display
-- Common name (if available)
-- Code point (hexadecimal)
-- Decimal value
-- Category
-- Wikipedia link (if available)
-- Similar characters - Automatically displayed characters that are visually similar
-
-The similar characters grid allows you to quickly navigate to related characters by clicking on them.
-
-### Downloading Characters
-
-From the character details modal:
-- **SVG** - Download as SVG format
-- **PNG** - Download with dark background
-- **PNG (Transparent)** - Download with transparent background
-
-## Project Structure
-
-```
-unicode_detector/
-├── app/
-│   ├── api/
-│   │   └── recognize/      # API route for character recognition
-│   ├── page.tsx            # Main page component
-│   └── layout.tsx          # Root layout
-├── components/
-│   ├── category-sidebar.tsx    # Category filter sidebar
-│   ├── character-grid.tsx      # Character grid display
-│   ├── character-modal.tsx     # Character details modal
-│   ├── drawing-modal.tsx       # Drawing/upload modal
-│   ├── search-header.tsx       # Search bar component
-│   └── ui/                     # Shadcn UI components
-├── lib/
-│   ├── unicode-data.ts     # Unicode data and utilities
-│   └── utils.ts            # Utility functions
-└── public/                 # Static assets
-```
-
-## Technologies
-
-- **Next.js 16** - React framework with App Router
-- **React 19** - UI library
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **Shadcn/UI** - UI component library
-- **Radix UI** - Accessible component primitives
-- **Lucide React** - Icons
-
-## API
-
-The app uses the [ShapeCatcher](https://shapecatcher.com) API for character recognition from drawings and images. The character recognition feature automatically processes your drawings and uploaded images to find matching Unicode characters, with automatic background removal for uploaded images.
-
-## Building for Production
-
-```bash
-npm run build
-npm start
-```
+- [`app/page.tsx`](app/page.tsx): search, filters, selection, and keyboard shortcuts.
+- [`components/`](components/): character grid, details, drawing modal, and export toolbar.
+- [`lib/unicode-data.ts`](lib/unicode-data.ts): Unicode categories and search helpers.
+- [`lib/similar-characters.json`](lib/similar-characters.json): precomputed visual matches.
+- [`scripts/precompute-similar.ts`](scripts/precompute-similar.ts): similarity-data generator.
+- [`app/api/recognize/route.ts`](app/api/recognize/route.ts): ShapeCatcher proxy.
 
 ## License
 
-This project is open source and available under the MIT License.
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
+[MIT](LICENSE).
