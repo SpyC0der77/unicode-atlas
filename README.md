@@ -4,7 +4,11 @@ Search and browse Unicode characters, draw a symbol to find matches, and export 
 
 ## Demo
 
-![Searching for U+2192 and opening its character details.](docs/images/demo.gif)
+![Searching for a character, inspecting font previews, exporting a PNG, and switching themes.](docs/images/demo.gif)
+
+[Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
+
+[Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
 
 <details>
 <summary>Screenshot</summary>

@@ -1,0 +1,26 @@
+{
+  "name": "unicode-atlas",
+  "url": "https://unicode-atlas.vercel.app",
+  "width": 960,
+  "height": 600,
+  "fps": 18,
+  "duration": 23.333333333333332,
+  "events": [
+    {
+      "time": 0.67,
+      "text": "Browse, then search by code point"
+    },
+    {
+      "time": 7.56,
+      "verified": "U+2192 opens the rightwards arrow details"
+    },
+    {
+      "time": 7.56,
+      "text": "Inspect font previews and export choices"
+    },
+    {
+      "time": 16.22,
+      "text": "Theme and character grid"
+    }
+  ]
+}
