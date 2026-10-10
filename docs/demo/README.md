@@ -2,6 +2,8 @@
 
 This script captures the deployed app at [https://unicode-atlas.vercel.app](https://unicode-atlas.vercel.app). It uses real browser interactions, eased cursor movement, short pauses, and camera zooms.
 
+The tour draws an arrow with real mouse strokes and submits it to the live recognition API. It checks that the canvas contains strokes and that the API returns matching characters before filming the results.
+
 Use Node.js 20.9 or newer and FFmpeg on your PATH. From the repository root, run:
 
 ```bash
