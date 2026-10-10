@@ -4,22 +4,69 @@
   "width": 960,
   "height": 600,
   "fps": 18,
-  "duration": 23.333333333333332,
+  "duration": 29.333333333333332,
   "events": [
     {
       "time": 0.67,
-      "text": "Browse, then search by code point"
+      "text": "Visual search by drawing an arrow"
     },
     {
-      "time": 7.56,
+      "time": 7.17,
+      "verified": "The canvas contains the drawn arrow"
+    },
+    {
+      "time": 8.83,
+      "verified": "The recognition API returns matching characters"
+    },
+    {
+      "time": 11.06,
+      "matches": [
+        "\u2346",
+        "\u297d",
+        "\u27f6",
+        "\u2192",
+        "\u290d",
+        "\u21fe",
+        "\u20ef",
+        "\u27f9",
+        "\u279c",
+        "\u291e",
+        "\u2799",
+        "\u21d2",
+        "\u2900",
+        "\u279d",
+        "+",
+        "\u2794",
+        "\u290f",
+        "\u2964",
+        "\u2903",
+        "\u279e",
+        "\u27aa",
+        "\u27fc",
+        "\u21e8",
+        "\u0362",
+        "\u21e5",
+        "\u21a0",
+        "\u21c9",
+        "\u21f8",
+        "\u22b0",
+        "\u27a1"
+      ]
+    },
+    {
+      "time": 11.06,
+      "text": "Inspect a match from the drawing"
+    },
+    {
+      "time": 13.67,
       "verified": "U+2192 opens the rightwards arrow details"
     },
     {
-      "time": 7.56,
+      "time": 13.67,
       "text": "Inspect font previews and export choices"
     },
     {
-      "time": 16.22,
+      "time": 22.33,
       "text": "Theme and character grid"
     }
   ]

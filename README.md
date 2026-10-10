@@ -4,9 +4,7 @@ Search and browse Unicode characters, draw a symbol to find matches, and export 
 
 ## Demo
 
-![Searching for a character, inspecting font previews, exporting a PNG, and switching themes.](docs/images/demo.gif)
-
-[Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
+![Drawing an arrow to find matching Unicode symbols, then inspecting and exporting a character.](docs/images/demo.gif)
 
 [Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
 
