@@ -6,8 +6,6 @@ Search and browse Unicode characters, draw a symbol to find matches, and export 
 
 ![Searching for U+2192 and opening its character details.](docs/images/demo.gif)
 
-Searching for U+2192 and opening its character details.
-
 <details>
 <summary>Screenshot</summary>
 
